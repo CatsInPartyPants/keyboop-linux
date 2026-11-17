@@ -11,6 +11,7 @@
 
 use crate::bus::{self, Bus, BusRx, Msg, VoiceStatus};
 use crate::config::Config;
+use crate::translate::{self, Translate};
 use crate::tray::KbTray;
 use crate::voice::{self, Voice, VoiceConfig};
 use crate::engine::{Action, Engine, Input};
@@ -45,6 +46,7 @@ enum HotkeyKind {
     Word,
     Phrase,
     Toggle,
+    Translate,
 }
 
 #[derive(Clone, Debug)]
@@ -252,7 +254,19 @@ struct App {
     voice_keysym: Option<xkb::Keysym>,
     /// Клавиша диктовки зажата: когда нажата и была ли с ней другая клавиша (тогда это сочетание).
     voice_held: Option<(Instant, bool)>,
+    translate: Option<Translate>,
+    /// Невидимое окно, в которое X-сервер кладёт содержимое выделения (PRIMARY).
+    sel_win: xproto::Window,
+    atoms: SelAtoms,
     quit: bool,
+}
+
+#[derive(Clone, Copy)]
+struct SelAtoms {
+    primary: xproto::Atom,
+    utf8: xproto::Atom,
+    prop: xproto::Atom,
+    incr: xproto::Atom,
 }
 
 pub fn run() -> Res<()> {
@@ -307,6 +321,27 @@ pub fn run() -> Res<()> {
         .check()?;
     let atom_active = conn.intern_atom(false, b"_NET_ACTIVE_WINDOW")?.reply()?.atom;
     let atom_wm_class = conn.intern_atom(false, b"WM_CLASS")?.reply()?.atom;
+    let atoms = SelAtoms {
+        primary: xproto::AtomEnum::PRIMARY.into(),
+        utf8: conn.intern_atom(false, b"UTF8_STRING")?.reply()?.atom,
+        prop: conn.intern_atom(false, b"KEYBOOP_SELECTION")?.reply()?.atom,
+        incr: conn.intern_atom(false, b"INCR")?.reply()?.atom,
+    };
+    let sel_win = conn.generate_id()?;
+    conn.create_window(
+        0,
+        sel_win,
+        root,
+        -10,
+        -10,
+        1,
+        1,
+        0,
+        xproto::WindowClass::INPUT_ONLY,
+        0,
+        &xproto::CreateWindowAux::new(),
+    )?
+    .check()?;
 
     let ctx = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
     let kb = Kb::new(&conn, &ctx, dev);
@@ -320,6 +355,7 @@ pub fn run() -> Res<()> {
         (HotkeyKind::Word, &cfg.hotkey_word),
         (HotkeyKind::Phrase, &cfg.hotkey_phrase),
         (HotkeyKind::Toggle, &cfg.hotkey_toggle),
+        (HotkeyKind::Translate, &cfg.hotkey_translate),
     ]
     .into_iter()
     .filter_map(|(k, s)| parse_hotkey(k, s))
@@ -349,6 +385,7 @@ pub fn run() -> Res<()> {
             bus.clone(),
         )
     });
+    let translate = (!cfg.hotkey_translate.trim().is_empty()).then(|| Translate::spawn(bus.clone(), 4));
     let voice_status = if cfg.voice { VoiceStatus::Loading } else { VoiceStatus::Off };
     let tray = {
         use ksni::blocking::TrayMethods;
@@ -387,6 +424,9 @@ pub fn run() -> Res<()> {
         voice_status,
         voice_keysym,
         voice_held: None,
+        translate,
+        sel_win,
+        atoms,
         quit: false,
     };
     app.grab_hotkeys();
@@ -574,6 +614,11 @@ impl App {
                 log::error!("{e}");
                 notify(&e);
             }
+            Msg::Translated { dir, source, text } => translate::show(dir, &source, &text),
+            Msg::TranslateError(e) => {
+                log::error!("{e}");
+                notify(&e);
+            }
             Msg::VoiceText(text) => {
                 let mut t = voice::normalize_for_typing(&text, self.cfg.voice_final_period, self.cfg.voice_capitalize);
                 if t.is_empty() {
@@ -682,6 +727,7 @@ impl App {
                     self.engine.input(Input::Click);
                 }
             }
+            Event::SelectionNotify(e) if e.requestor == self.sel_win => self.selection_ready(e.property)?,
             Event::PropertyNotify(e) if e.atom == self.atom_active => {
                 self.engine.input(Input::Focus);
                 self.engine.excluded_app = self.active_window_excluded();
@@ -733,6 +779,13 @@ impl App {
                 notify(if self.engine.auto { "Авто-исправление включено" } else { "Авто-исправление выключено" });
                 let auto = self.engine.auto;
                 self.update_tray(move |t| t.auto = auto);
+                Action::None
+            }
+            HotkeyKind::Translate => {
+                // Просим владельца выделения положить текст в свойство нашего окна;
+                // ответ придёт событием SelectionNotify.
+                let a = self.atoms;
+                self.conn.convert_selection(self.sel_win, a.primary, a.utf8, a.prop, x11rb::CURRENT_TIME)?;
                 Action::None
             }
         };
@@ -856,6 +909,38 @@ impl App {
             self.set_caps(true)?;
         }
         self.conn.sync()?;
+        Ok(())
+    }
+
+    /// Выделение пришло (или его нет). Отдаём текст в поток перевода.
+    fn selection_ready(&mut self, prop: xproto::Atom) -> Res<()> {
+        let Some(tr) = &self.translate else { return Ok(()) };
+        if prop == x11rb::NONE {
+            notify("Нет выделенного текста");
+            return Ok(());
+        }
+        // Берём до 64 КБ (длина в 32-битных словах); свойство сразу удаляем.
+        let r = self.conn.get_property(true, self.sel_win, prop, xproto::AtomEnum::ANY, 0, 16 * 1024)?.reply()?;
+        if r.type_ == self.atoms.incr {
+            notify("Выделение слишком большое для перевода");
+            return Ok(());
+        }
+        let text = String::from_utf8_lossy(&r.value).trim().to_string();
+        if text.is_empty() {
+            notify("Нет выделенного текста");
+            return Ok(());
+        }
+        let n = text.chars().count();
+        if n > translate::MAX_CHARS {
+            notify(&format!("Слишком длинный текст: {n} симв. (не больше {})", translate::MAX_CHARS));
+            return Ok(());
+        }
+        if self.cfg.log_text {
+            log::info!("перевожу: {text:?}");
+        } else {
+            log::info!("перевожу {n} симв.");
+        }
+        tr.send(text);
         Ok(())
     }
 

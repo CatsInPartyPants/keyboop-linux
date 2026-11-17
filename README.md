@@ -144,7 +144,7 @@ keyboop check yt привет       # с предыдущим словом: yt �
 За основу взят [Keyboop для macOS](https://github.com/iffuno/keyboop) (MIT). Оттуда перенесены
 детектор раскладки (`LayoutDetector.swift`), таблицы раскладок (`Keymap.swift`), дополнительный
 словарь (`ExtraWords.swift` → `data/extra_words.json` через `tools/extract_extra_words.py`),
-затравка и чистка «призраков» для Whisper (`WhisperBridge.swift`) и значок для трея.
+затравка и чистка «призраков» для Whisper (`WhisperBridge.swift`, `WhisperGhosts.swift`) и значок для трея.
 Своё в этом порте — всё, что касается Linux: X11, трей, systemd, запись звука.
 
 Словари и триграммы `data/words_*.json`, `data/trigrams_*.json` — из проекта

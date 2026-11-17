@@ -1,6 +1,6 @@
 # Keyboop для Linux (X11)
 
-Порт ядра Keyboop (версия для macOS) на Rust: исправляет слово, набранное не в той раскладке
+Порт ядра [Keyboop](https://github.com/iffuno/keyboop) (версия для macOS) на Rust: исправляет слово, набранное не в той раскладке
 (`ghbdtn` → `привет`, `руддщ` → `hello`), и переключает раскладку. Детектор перенесён из
 `LayoutDetector.swift` один в один, словари и триграммы те же (встроены в бинарник).
 
@@ -139,5 +139,16 @@ keyboop check yt привет       # с предыдущим словом: yt �
 - правки на лету посреди слова (live-fix) пока нет;
 - клик мышью, стрелки и сочетания с Ctrl/Alt сбрасывают контекст: где теперь каретка, неизвестно.
 
-Данные `data/words_*.json`, `data/trigrams_*.json` — из проекта keyswitcher (MIT, © 2026 Ilya Granin).
-`data/extra_words.json` генерируется `tools/extract_extra_words.py` из `ExtraWords.swift`.
+## Откуда что взято
+
+За основу взят [Keyboop для macOS](https://github.com/iffuno/keyboop) (MIT). Оттуда перенесены
+детектор раскладки (`LayoutDetector.swift`), таблицы раскладок (`Keymap.swift`), дополнительный
+словарь (`ExtraWords.swift` → `data/extra_words.json` через `tools/extract_extra_words.py`),
+затравка и чистка «призраков» для Whisper (`WhisperBridge.swift`) и значок для трея.
+Своё в этом порте — всё, что касается Linux: X11, трей, systemd, запись звука.
+
+Словари и триграммы `data/words_*.json`, `data/trigrams_*.json` — из проекта
+[keyswitcher](https://github.com/graninilya/keyswitcher) (MIT, © 2026 Ilya Granin).
+
+Лицензия — MIT, см. [LICENSE](LICENSE); подробности о сторонних материалах — в
+[THIRD_PARTY.md](THIRD_PARTY.md).

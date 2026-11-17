@@ -1,0 +1,23 @@
+# Сборка Rust
+/target
+**/*.rs.bk
+
+# Модели whisper и тестовые записи
+*.bin
+*.wav
+
+# Python
+__pycache__/
+*.pyc
+
+# Редакторы и IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# Системный мусор
+.DS_Store
+
+# Локальные настройки Claude Code
+.claude/

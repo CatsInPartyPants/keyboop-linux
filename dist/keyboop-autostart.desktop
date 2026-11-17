@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Keyboop
+Comment=Исправление текста, набранного не в той раскладке
+Exec=sh -c 'systemctl --user import-environment DISPLAY XAUTHORITY && systemctl --user restart keyboop'
+X-GNOME-Autostart-enabled=true
+OnlyShowIn=XFCE;

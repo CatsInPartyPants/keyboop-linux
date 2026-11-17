@@ -1,0 +1,11 @@
+[Unit]
+Description=Keyboop — исправление раскладки RU/EN (X11)
+# Запускается из автозапуска XFCE, когда X-сессия уже есть.
+# Не перезапускать бесконечно, если X-сессии нет (например, после выхода).
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+ExecStart=%h/.local/bin/keyboop
+Restart=on-failure
+RestartSec=2

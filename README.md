@@ -86,6 +86,23 @@ systemctl --user import-environment DISPLAY XAUTHORITY && systemctl --user resta
 | Отменить авто-исправление (и запомнить слово) | тот же хоткей сразу после него | `Fn+P` |
 | Исправить всю фразу | `Shift+Pause` | `Shift+Fn+P` |
 | Включить/выключить авто | `Ctrl+Pause` | `Ctrl+Fn+P` |
+| Перевести выделенное (RU ↔ EN) | `Alt+Pause` | `Alt+Fn+P` |
+
+## Перевод выделенного текста
+
+Выдели текст мышью и нажми `Alt+Pause`: перевод откроется в отдельном окне. Направление
+определяется само: русский текст переводится на английский, английский — на русский. Работает
+без интернета, на процессоре: несколько предложений переводятся меньше чем за секунду.
+
+Модели (OPUS-MT, ~80 МБ на направление) нужно один раз подготовить:
+
+```bash
+tools/get_translate_models.sh   # нужен только python3; кладёт модели в ~/.local/share/keyboop/models
+keyboop translate привет мир    # проверка из терминала
+```
+
+Окно показывается через `zenity` (в XFCE обычно уже стоит; иначе `sudo pacman -S zenity`),
+без него перевод приходит уведомлением. Технические термины модель переводит хуже обычного текста.
 
 ## Значок в трее
 
@@ -129,6 +146,7 @@ keyboop check yt привет       # с предыдущим словом: yt �
 - `src/keymap.rs` — порт `Keymap.swift`; живая таблица строится из XKB (аналог `DynamicKeymap`).
 - `src/engine.rs` — модель набранного текста: слова, хвосты пробелов, отмена. Без X11, с тестами.
 - `src/voice.rs` — запись (cpal → PipeWire), whisper.cpp, затравка и чистка «призраков» из Swift.
+- `src/translate.rs` — офлайн-перевод OPUS-MT через CTranslate2; выделение читается из X11 PRIMARY.
 - `src/tray.rs` — значок (StatusNotifierItem через ksni), `src/bus.rs` — сообщения в основной поток.
 - `src/x11.rs` — XInput2 raw events (чтение), XTest (печать), XKB (раскладка), XGrabKey (хоткеи).
   Свои синтетические нажатия отсекаются по устройству-источнику (XTEST).
@@ -149,6 +167,9 @@ keyboop check yt привет       # с предыдущим словом: yt �
 
 Словари и триграммы `data/words_*.json`, `data/trigrams_*.json` — из проекта
 [keyswitcher](https://github.com/graninilya/keyswitcher) (MIT, © 2026 Ilya Granin).
+
+Модели перевода — [OPUS-MT](https://github.com/Helsinki-NLP/Opus-MT) (Helsinki-NLP, CC-BY 4.0),
+запускаются через [CTranslate2](https://github.com/OpenNMT/CTranslate2) (MIT).
 
 Лицензия — MIT, см. [LICENSE](LICENSE); подробности о сторонних материалах — в
 [THIRD_PARTY.md](THIRD_PARTY.md).

@@ -7,6 +7,7 @@ mod detector;
 mod engine;
 mod exceptions;
 mod keymap;
+mod translate;
 mod tray;
 mod voice;
 mod x11;
@@ -19,7 +20,8 @@ fn usage() {
          keyboop               запустить (нужна X11-сессия)\n\
          keyboop check СЛОВО [ПРЕДЫДУЩЕЕ]   что сделает детектор с этим словом\n\
          keyboop convert ТЕКСТ              перевернуть раскладку текста\n\
-         keyboop download-model [ИМЯ]       скачать модель whisper (по умолчанию из настроек)\n",
+         keyboop download-model [ИМЯ]       скачать модель whisper (по умолчанию из настроек)\n\
+         keyboop translate ТЕКСТ            перевести RU ↔ EN (офлайн)\n",
         ver = env!("CARGO_PKG_VERSION")
     );
 }
@@ -61,6 +63,16 @@ fn main() {
             let name = args.get(1).cloned().unwrap_or_else(|| config::Config::load().voice_model);
             match voice::download_model(&name) {
                 Ok(p) => println!("готово: {}", p.display()),
+                Err(e) => {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                }
+            }
+        }
+        Some("translate") if args.len() >= 2 => {
+            let t = args[1..].join(" ");
+            match translate::translate_once(&t, 4) {
+                Ok((dir, out)) => println!("[{}] {out}", dir.label()),
                 Err(e) => {
                     eprintln!("{e}");
                     std::process::exit(1);

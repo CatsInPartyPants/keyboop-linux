@@ -22,6 +22,10 @@ hotkey_phrase = "shift+Pause"
 # Включить/выключить авто-исправление.
 hotkey_toggle = "ctrl+Pause"
 
+# Перевести выделенный текст (RU ↔ EN, офлайн) и показать в окне.
+# Модели: tools/get_translate_models.sh
+hotkey_translate = "alt+Pause"
+
 # Программы, где авто-исправление выключено (класс окна, см. `xprop WM_CLASS`).
 # Горячие клавиши в них работают.
 exclude_apps = []
@@ -65,6 +69,7 @@ pub struct Config {
     pub hotkey_word: String,
     pub hotkey_phrase: String,
     pub hotkey_toggle: String,
+    pub hotkey_translate: String,
     pub exclude_apps: Vec<String>,
     pub log_text: bool,
     pub voice: bool,
@@ -86,6 +91,7 @@ impl Default for Config {
             hotkey_word: "Pause".into(),
             hotkey_phrase: "shift+Pause".into(),
             hotkey_toggle: "ctrl+Pause".into(),
+            hotkey_translate: "alt+Pause".into(),
             exclude_apps: vec![],
             log_text: false,
             voice: true,

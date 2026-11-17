@@ -32,6 +32,9 @@ pub enum Msg {
     VoiceStatus(VoiceStatus),
     VoiceText(String),
     VoiceError(String),
+    /// Готов перевод выделенного текста.
+    Translated { dir: crate::translate::Dir, source: String, text: String },
+    TranslateError(String),
 }
 
 #[derive(Clone)]

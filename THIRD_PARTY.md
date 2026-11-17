@@ -36,6 +36,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Модели перевода OPUS-MT
+
+Модели не входят в репозиторий: `tools/get_translate_models.sh` качает их с
+[OPUS-MT](https://github.com/Helsinki-NLP/Opus-MT) и конвертирует в формат CTranslate2.
+
+- `ru-en/opus-2020-02-26`, `en-ru/opus-2020-02-11` — © University of Helsinki
+  (Language Technology Research Group), лицензия
+  [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/). Изменения: конвертация в
+  CTranslate2 с квантованием int8. Текст лицензии кладётся рядом с моделью (`LICENSE`).
+- Tiedemann, J. & Thottingal, S. (2020). *OPUS-MT — Building open translation services for
+  the World*. EAMT 2020.
+
+Модели запускаются библиотекой [CTranslate2](https://github.com/OpenNMT/CTranslate2)
+(MIT, © 2019 SYSTRAN) через привязки [ct2rs](https://github.com/jkawamoto/ctranslate2-rs) (MIT).
+
 ## Модели Whisper
 
 Модели не входят в репозиторий: `keyboop download-model` качает их с
